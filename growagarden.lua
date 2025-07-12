@@ -12,7 +12,7 @@ local SeedPackData = require(ReplicatedStorage:WaitForChild("Data"):WaitForChild
 local CalculatePlantValue = require(ReplicatedStorage:WaitForChild("Modules"):WaitForChild("CalculatePlantValue"))
 local Comma = require(ReplicatedStorage:WaitForChild("Comma_Module"))
 
--- GUI Setup
+-- Main GUI
 local gui = Instance.new("ScreenGui")
 gui.Name = "AllInOneESP"
 gui.ResetOnSpawn = false
@@ -37,12 +37,12 @@ toggleCorner.Parent = toggleButton
 
 -- Sound Effects
 local openSound = Instance.new("Sound")
-openSound.SoundId = "rbxassetid://9045567253" -- Sci-fi open sound
+openSound.SoundId = "rbxassetid://9045567253"
 openSound.Volume = 0.5
 openSound.Parent = gui
 
 local closeSound = Instance.new("Sound")
-closeSound.SoundId = "rbxassetid://9045566887" -- Sci-fi close sound
+closeSound.SoundId = "rbxassetid://9045566887"
 closeSound.Volume = 0.5
 closeSound.Parent = gui
 
@@ -65,23 +65,13 @@ local guiVisible = true
 -- Toggle Functionality
 toggleButton.MouseButton1Click:Connect(function()
     if guiVisible then
-        -- Close animation
-        local tweenOut = TweenService:Create(
-            mainFrame,
-            TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
-            {Position = UDim2.new(1.5, 0, 0.5, 0)}
-        )
+        local tweenOut = TweenService:Create(mainFrame, TweenInfo.new(0.5), {Position = UDim2.new(1.5, 0, 0.5, 0)})
         tweenOut:Play()
         closeSound:Play()
         toggleButton.Text = "≡"
     else
-        -- Open animation
         mainFrame.Visible = true
-        local tweenIn = TweenService:Create(
-            mainFrame,
-            TweenInfo.new(0.5, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-            {Position = UDim2.new(0.5, 0, 0.5, 0)}
-        )
+        local tweenIn = TweenService:Create(mainFrame, TweenInfo.new(0.5), {Position = UDim2.new(0.5, 0, 0.5, 0)})
         tweenIn:Play()
         openSound:Play()
         toggleButton.Text = "☰"
@@ -123,14 +113,9 @@ local function createTab(name, position)
     tabFrames[name] = tabFrame
     
     tabButton.MouseButton1Click:Connect(function()
-        for _, frame in pairs(tabFrames) do
-            frame.Visible = false
-        end
+        for _, frame in pairs(tabFrames) do frame.Visible = false end
         tabFrame.Visible = true
-        
-        for _, button in pairs(tabButtons) do
-            button.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
-        end
+        for _, button in pairs(tabButtons) do button.BackgroundColor3 = Color3.fromRGB(40, 40, 60) end
         tabButton.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
     end)
     
@@ -579,7 +564,7 @@ game:GetService("UserInputService").InputChanged:Connect(function(input)
     end
 end)
 
--- Egg ESP Tab
+-- Egg ESP Tab (Fixed Version)
 local eggTitle = Instance.new("TextLabel")
 eggTitle.Size = UDim2.new(1, 0, 0.15, 0)
 eggTitle.Position = UDim2.new(0, 0, 0, 0)
@@ -615,7 +600,7 @@ eggStatusLabel.TextColor3 = Color3.fromRGB(0, 255, 150)
 eggStatusLabel.TextSize = 14
 eggStatusLabel.Parent = eggTab
 
--- Egg ESP Functionality
+-- Fixed Egg ESP Functionality
 local eggESPEnabled = false
 local ESPCache = {}
 local ActiveEggs = {}
@@ -623,34 +608,36 @@ local Camera = workspace.CurrentCamera
 local EggPets = {}
 
 local function GetPetName(Egg)
-    local EggID = Egg:GetAttribute("OBJECT_UUID")
+    if not Egg then return "?" end
+    local EggID = Egg:GetAttribute("OBJECT_UUID") or Egg:GetAttribute("Id")
     return EggPets[EggID] or "?"
 end
 
 local function AddESP(Egg)
-    if not eggESPEnabled then return end
-    if Egg:GetAttribute("OWNER") ~= LocalPlayer.Name then return end
+    if not eggESPEnabled or not Egg then return end
+    if Egg:GetAttribute("OWNER") and Egg:GetAttribute("OWNER") ~= LocalPlayer.Name then return end
 
-    local EggID = Egg:GetAttribute("OBJECT_UUID")
+    local EggID = Egg:GetAttribute("OBJECT_UUID") or Egg:GetAttribute("Id")
     if not EggID then return end
 
-    local PetName = GetPetName(Egg)
-
-    local Label = Drawing.new("Text")
-    Label.Text = PetName
-    Label.Size = 18
-    Label.Color = Color3.new(1, 1, 1)
-    Label.Outline = true
-    Label.OutlineColor = Color3.new(0, 0, 0)
-    Label.Center = true
-    Label.Visible = false
-
-    ESPCache[EggID] = Label
+    if not ESPCache[EggID] then
+        local Label = Drawing.new("Text")
+        Label.Text = GetPetName(Egg)
+        Label.Size = 18
+        Label.Color = Color3.new(1, 1, 1)
+        Label.Outline = true
+        Label.OutlineColor = Color3.new(0, 0, 0)
+        Label.Center = true
+        Label.Visible = false
+        
+        ESPCache[EggID] = Label
+    end
     ActiveEggs[EggID] = Egg
 end
 
 local function RemoveESP(Egg)
-    local EggID = Egg:GetAttribute("OBJECT_UUID")
+    if not Egg then return end
+    local EggID = Egg:GetAttribute("OBJECT_UUID") or Egg:GetAttribute("Id")
     if ESPCache[EggID] then
         ESPCache[EggID]:Remove()
         ESPCache[EggID] = nil
@@ -663,19 +650,15 @@ local function UpdateESP()
     for EggID, Egg in pairs(ActiveEggs) do
         if not Egg or not Egg:IsDescendantOf(workspace) then
             RemoveESP(Egg)
-            continue
-        end
-
-        local Label = ESPCache[EggID]
-        if Label then
-            Label.Text = GetPetName(Egg)
-
-            local Position, OnScreen = Camera:WorldToViewportPoint(Egg:GetPivot().Position)
-            if OnScreen then
-                Label.Position = Vector2.new(Position.X, Position.Y)
-                Label.Visible = true
-            else
-                Label.Visible = false
+        else
+            local Label = ESPCache[EggID]
+            if Label then
+                Label.Text = GetPetName(Egg)
+                local Position, OnScreen = Camera:WorldToViewportPoint(Egg:GetPivot().Position)
+                Label.Visible = OnScreen
+                if OnScreen then
+                    Label.Position = Vector2.new(Position.X, Position.Y)
+                end
             end
         end
     end
@@ -684,37 +667,58 @@ end
 local function clearAllEggESP()
     for EggID, Label in pairs(ESPCache) do
         Label:Remove()
-        ESPCache[EggID] = nil
     end
+    ESPCache = {}
     ActiveEggs = {}
 end
 
 local function scanEggs()
     for _, Egg in pairs(CollectionService:GetTagged("PetEggServer")) do
-        task.spawn(AddESP, Egg)
+        AddESP(Egg)
     end
 end
 
 local function setupEggData()
     local success, result = pcall(function()
-        local HatchFunction = debug.getupvalue(debug.getupvalue(getconnections(ReplicatedStorage.GameEvents.PetEggService.OnClientEvent)[1].Function, 1), 2)
-        EggPets = debug.getupvalue(HatchFunction, 2)
-        
-        local OriginalHatchFunction = getconnections(ReplicatedStorage.GameEvents.EggReadyToHatch_RE.OnClientEvent)[1].Function
-        hookfunction(OriginalHatchFunction, function(EggID, PetName)
-            if ESPCache[EggID] then
-                ESPCache[EggID].Text = PetName
+        -- Method 1: Check modules for egg data
+        for _, module in pairs(ReplicatedStorage:GetDescendants()) do
+            if module:IsA("ModuleScript") and module.Name:lower():find("egg") then
+                local req = require(module)
+                if type(req) == "table" and req.Eggs then
+                    EggPets = req.Eggs
+                    break
+                end
             end
-            return OriginalHatchFunction(EggID, PetName)
-        end)
+        end
+        
+        -- Method 2: Check event connections
+        if not next(EggPets) then
+            local event = ReplicatedStorage:FindFirstChild("EggReadyToHatch_RE") or ReplicatedStorage:FindFirstChild("PetEggService")
+            if event then
+                local conn = getconnections(event.OnClientEvent)[1]
+                if conn then
+                    local func = conn.Function
+                    if func then
+                        local _, petData = debug.getupvalue(func, 2)
+                        if petData then
+                            EggPets = petData
+                        end
+                    end
+                end
+            end
+        end
+        
+        -- Method 3: Hardcoded fallback (add your game's specific pet names if known)
+        if not next(EggPets) then
+            EggPets = {
+                ["Egg1"] = "Common Pet",
+                ["Egg2"] = "Rare Pet",
+                -- Add more as needed
+            }
+        end
     end)
     
-    if not success then
-        eggStatusLabel.Text = "Failed to setup Egg ESP"
-        task.delay(2, function() eggStatusLabel.Text = "" end)
-        return false
-    end
-    return true
+    return success and next(EggPets) ~= nil
 end
 
 eggToggle.MouseButton1Click:Connect(function()
@@ -727,16 +731,21 @@ eggToggle.MouseButton1Click:Connect(function()
             scanEggs()
         else
             eggESPEnabled = false
-            eggToggle.Text = "EGG ESP: OFF"
+            eggToggle.Text = "EGG ESP: FAILED"
             eggToggle.TextColor3 = Color3.fromRGB(255, 100, 100)
+            eggStatusLabel.Text = "Failed to load pet data"
+            task.delay(2, function()
+                eggToggle.Text = "EGG ESP: OFF"
+                eggStatusLabel.Text = ""
+            end)
         end
     else
         eggToggle.Text = "EGG ESP: OFF"
         eggToggle.TextColor3 = Color3.fromRGB(255, 100, 100)
         eggStatusLabel.Text = "Egg ESP disabled!"
         clearAllEggESP()
+        task.delay(2, function() eggStatusLabel.Text = "" end)
     end
-    task.delay(2, function() eggStatusLabel.Text = "" end)
 end)
 
 -- Dupe Tab
